@@ -186,8 +186,7 @@ class MongoSession
 		ini_set('session.gc_maxlifetime', $this->getConfig('lifetime'));
 		
 		$this->conn = new Mongo(
-			$this->getConfig('connection'),
-			array('persistent' => $this->getConfig('name'))
+			$this->getConfig('connection')
 		);
 		
 		//make the connection explicit
