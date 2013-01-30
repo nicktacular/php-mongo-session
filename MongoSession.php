@@ -45,21 +45,24 @@ class MongoSession
      * unless you have load balancing where a different host is being passed.
      */
     private static $config = array(
-        'name'            => 'PHPSESSID',
-        'connection'    => 'mongodb://localhost:27017',
-        'db'            => 'mySessDb',
-        'collection'    => 'sessions',
-        'lockcollection'=> 'sessions_lock',
-        'timeout'        => 3600,//seconds
-        'cache'            => 'private_no_expire',
-        'cache_expiry'    => 10,//minutes
-        'cookie_path'    => '/',
-        'cookie_domain'    => '.thisdomain.com',
-        'cookie_secure'    => false,
-        'autostart'        => false,
-        'locktimeout'    => 5,//seconds
-        'locksleep'        => 300,//milliseconds
-        'cleanonclose'    => false,//this is an option for testing purposes
+        'name'              => 'PHPSESSID',
+        'connection'        => 'mongodb://localhost:27017',
+        'db'                => 'mySessDb',
+        'collection'        => 'sessions',
+        'lockcollection'    => 'sessions_lock',
+        'timeout'           => 3600,//seconds
+        'cache'             => 'private_no_expire',
+        'cache_expiry'      => 10,//minutes
+        'cookie_path'       => '/',
+        'cookie_domain'     => '.thisdomain.com',
+        'cookie_secure'     => false,
+        'autostart'         => false,
+        'locktimeout'       => 30,//seconds
+        'locksleep'         => 100,//milliseconds
+        'cleanonclose'      => false,//this is an option for testing purposes
+        'error_handler'     => 'trigger_error',
+        'logger'            => false,//by default, no logging
+        'machine_id'        => false,//identify the machine, if you want for debugs
     );
     
     /**
@@ -253,7 +256,7 @@ class MongoSession
      * Acquires a lock on a session, or it waits for a specified amount of time
      * WARNING: This method isn't expected to fail in any realistic application.
      * In the case of a tiny Mongo server with tons of web traffic, it's conceivable
-     * that this method would fail and throw an exception. Keep in mind that php will
+     * that this method could fail. Keep in mind that php will
      * make sure that write() and close() is also called if this fails. There's no
      * specific way to ensure that this never fails since it's dependent on the
      * application design. Overall, one should be extremely careful with making
@@ -269,6 +272,11 @@ class MongoSession
         
         $timeout = $this->getConfig('locktimeout') * 1000000;//microseconds we want
         $sleep = $this->getConfig('locksleep') * 1000;//we want microseconds
+        $start = microtime(true);
+        
+        $this->log('Trying to acquire a lock on ' . $sid);
+        
+        $waited = false;
         
         do
         {
@@ -280,20 +288,30 @@ class MongoSession
                 $lock = array();
                 $lock['_id'] = $sid;
                 $lock['created'] = new MongoDate();
+                
+                if ($mid = $this->getConfig('machine_id'))
+                    $lock['mid'] = $mid;
+                
                 $res = $this->locks->save($lock, array('safe' => true));
                 $this->lockAcquired = true;
+                
+                $this->log('Lock acquired @ ' . date('Y-m-d H:i:s', $lock['created']->sec));
+                
+                if ($waited)
+                    $this->log('LOCK_WAIT_SECONDS:' . number_format(microtime(true) - $start, 5));
+                
                 return true;
             }
             
             //we need to sleep
             usleep($sleep);
+            $waited = true;
             $timeout -= $sleep;
         }
-        
         while ($timeout > 0);
         
-        //no lock could be acquired
-        return false;
+        //no lock could be acquired, so try to use an error handler for this
+        $this->errorHandler('Could not acquire lock for ' . $sid);
     }
     
     /**
@@ -345,8 +363,6 @@ class MongoSession
     
     /**
      * Read the contents of the session. Get's called once during a request to get entire session contents.
-     * If a lock can't be aquired, throw an exception, although this may change in the future since we're
-     * not entirely sure this is the most elegant way to deal with this.
      *
      * @param    string        $sid    The session ID passed by PHP.
      * @return     string                Either an empty string if there's nothing in a session of a special session
@@ -357,23 +373,20 @@ class MongoSession
     {
         //save the session ID for closing later
         $this->sid = $sid;
-        if ($this->lock($sid))
+        
+        //a lock MUST be acquired, but the complexity is in the lock() method
+        $this->lock($sid);
+        
+        $this->sessionDoc = $this->sessions->findOne(array('_id' => $sid));
+        
+        if (!$this->sessionDoc)
         {
-            $this->sessionDoc = $this->sessions->findOne(array('_id' => $sid));
-            
-            if (!$this->sessionDoc)
-            {
-                return '';
-            }
-            else
-            {
-                //return the string data (stored as Mongo binary format)
-                return $this->sessionDoc['data']->bin;
-            }
+            return '';
         }
         else
         {
-            throw new Exception("Could not acquire a lock for session id $sid.");
+            //return the string data (stored as Mongo binary format)
+            return $this->sessionDoc['data']->bin;
         }
     }
     
@@ -401,7 +414,7 @@ class MongoSession
             
             //set the new one
             $this->sid = $sid;
-            $this->lock($this->sid);
+            $this->lock($this->sid);//@TODO shouldn't we try to see if this succeeded first?
             
             //and also make sure we're going to write to the correct document
             $this->sessionDoc['_id'] = $sid;
@@ -413,6 +426,31 @@ class MongoSession
         $this->sessions->save($this->sessionDoc, array('safe' => true));
         
         return true;
+    }
+    
+    /**
+     * Tries to invoke the error handler specified in settings.
+     */
+    private function errorHandler($msg)
+    {
+        $waited = $this->getConfig('locktimeout');
+        $this->log("PANIC! {$this->sid} cannot be acquired after waiting for {$waited}s. ");
+        $h = $this->getConfig('error_handler');
+        
+        //call and exit
+        call_user_func_array($h, array($msg));
+        exit(1);
+    }
+    
+    /**
+     * For logging, if we want to.
+     */
+    private function log($msg)
+    {
+        $logger = $this->getConfig('logger');
+        if (!$logger) return false;
+        
+        return call_user_func_array($logger, array($msg));
     }
     
     /**
