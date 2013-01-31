@@ -69,7 +69,7 @@ locks. If your script runs out of memory and PHP crashes without the application
 you could end up with a session that's completely locked out to the user. I've been able to partially
 replicate this problem on AWS EC2 Micro instances with a memory hungry app. Occasional crashes would
 occur under heavy load causing PHP not to finish the session with `write()` and `close()` which would
-invoking the unlocking mechanism.
+invoking the unlock mechanism.
 
 You can't test this type of behavior in a unit test. You must test your entire application under load
 to ensure that you're running sufficient resources so that your application is running stable.
@@ -100,6 +100,6 @@ wrap my head around.
 
 **(Q) Where's `composer.json`??**
 
-(A) Why don't you tweet about how this doesn't have `composer.json`?
+(A) Why don't you tweet about how this project doesn't have `composer.json`? I'll retweet you.
 
 
