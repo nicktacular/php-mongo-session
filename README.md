@@ -91,7 +91,7 @@ If you've examined the code, I'm sure you have a few questions.
 
 **(Q) WHERE are your unit tests?**
 
-(This is a question [https://twitter.com/grmpyprogrammer](@grmpyprogrammer) is surely asking right about now…)
+(This is a question [@grmpyprogrammer](https://twitter.com/grmpyprogrammer) is surely asking right about now…)
 
 (A) I'm working on it, but PHP sessions are inherently difficult to test. You can't really mock PHP calling your
 session handler so I'm working on figuring out a test. Regardless, I'm using this in a production environment
