@@ -47,7 +47,7 @@ Sessions are hard
 Sessions are something we take for granted in PHP since they just work straight out of the box. You call
 `session_start()` and things just work well and quickly. Done.
 
-Ok, now that you're done developing on a single-machine architecture, let's briefly discuss on multi-machine
+Ok, now that you're done developing on a single-machine architecture, let's briefly discuss multi-machine
 environments. You can no longer rely on the tried-and-true file-based session management from PHP. Time
 to use a centralized system.
 
