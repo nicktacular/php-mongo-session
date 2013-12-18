@@ -288,7 +288,13 @@ class MongoSession
                 if ($mid = $this->getConfig('machine_id'))
                     $lock['mid'] = $mid;
 
-                $res = $this->locks->save($lock, array('safe' => true));
+                try {
+                    $res = $this->locks->save($lock, array('safe' => true));
+                } catch (MongoCursorException $e) {
+                    //may occur if there's a race to acquire a lock
+                    continue;
+                }
+
                 $this->lockAcquired = true;
 
                 $this->log('Lock acquired @ ' . date('Y-m-d H:i:s', $lock['created']->sec));
