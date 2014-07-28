@@ -186,9 +186,11 @@ class MongoSession
         //we need to ensure that PHP knows about our explicit timeout
         ini_set('session.gc_maxlifetime', $this->getConfig('lifetime'));
 
-        $this->conn = new Mongo(
-            $this->getConfig('connection')
-        );
+	//Mongo() defunct, use MongoClient() if available
+	$mongo_class = ( (class_exists('MongoClient')) ? ('MongoClient') : ('Mongo') );
+        $this->conn = new $mongo_class(
+				       $this->getConfig('connection')
+				       );
 
         //make the connection explicit
         $this->conn->connect();
