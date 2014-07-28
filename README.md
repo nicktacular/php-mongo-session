@@ -41,6 +41,21 @@ MongoSession::init();
 
 You can pass `true` to `init(…)` the first time it runs so that you create the indices, but that's it.
 
+You can pass options to MongoClient() via `connection_opts` in config.
+
+Ex, connect to replicaSet and define timeout:
+
+```php
+MongoSession::config(array(
+                           'connection'=>'mongodb://mongo1:27017,mongo2:27017',
+                           'connection_opts'=>array(
+                                                    'replicaSet'=>'rs1',
+                                                    'connecttimeoutMS'=>5000,
+                                                    ),
+                           'cookie_domain'=>'.mydomain.com',
+                           'db'=>'theDbName',
+```
+
 Sessions are hard
 =================
 
