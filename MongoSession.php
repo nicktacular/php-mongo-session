@@ -47,6 +47,7 @@ class MongoSession
     private static $config = array(
         'name'              => 'PHPSESSID',
         'connection'        => 'mongodb://localhost:27017',
+	'connection_opts'   => array(),//options to pass to MongoClient
         'db'                => 'mySessDb',
         'collection'        => 'sessions',
         'lockcollection'    => 'sessions_lock',
@@ -186,10 +187,17 @@ class MongoSession
         //we need to ensure that PHP knows about our explicit timeout
         ini_set('session.gc_maxlifetime', $this->getConfig('lifetime'));
 
+	//Mongo/MongoClient( uri, options )
+	$mongo_options = array();
+	foreach($this->getConfig('connection_opts') as $optname=>$optvalue){
+	  $mongo_options[$optname] = $optvalue;
+	}
+
 	//Mongo() defunct, use MongoClient() if available
 	$mongo_class = ( (class_exists('MongoClient')) ? ('MongoClient') : ('Mongo') );
         $this->conn = new $mongo_class(
-				       $this->getConfig('connection')
+				       $this->getConfig('connection'),
+				       $mongo_options
 				       );
 
         //make the connection explicit
