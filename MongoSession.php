@@ -64,6 +64,8 @@ class MongoSession
         'error_handler'     => 'trigger_error',
         'logger'            => false,//by default, no logging
         'machine_id'        => false,//identify the machine, if you want for debugs
+	'write_concern'     => 1,//by default, MongoClient uses w=1 (Mongo 'safe' mode)
+	'write_journal'     => false,//by default, no journaling required before ack
     );
 
     /**
@@ -200,6 +202,14 @@ class MongoSession
 				       $mongo_options
 				       );
 
+	if($mongo_class == 'MongoClient'){	  
+	  //set write concern from config
+	  $this->instConfig['write_options'] = array('w'=>$this->getConfig('write_concern'), 'j'=>$this->getConfig('write_journal'));
+	}else {
+	  //defunct 'safe' write, use safe mode if w > 0
+	  $this->instConfig['write_options'] = array('safe'=>( ($this->getConfig('write_concern')>0) ? (true) : (false)));
+	}
+
         //make the connection explicit
         $this->conn->connect();
 
@@ -299,7 +309,7 @@ class MongoSession
                     $lock['mid'] = $mid;
 
                 try {
-                    $res = $this->locks->save($lock, array('safe' => true));
+		  $res = $this->locks->save($lock, $this->getConfig('write_options'));
                 } catch (MongoCursorException $e) {
                     //may occur if there's a race to acquire a lock
                     continue;
@@ -333,7 +343,7 @@ class MongoSession
     {
         if ($this->lockAcquired) {
             $this->lockAcquired = false;
-            $this->locks->remove(array('_id' => $sid), array('safe' => true));
+            $this->locks->remove(array('_id' => $sid), $this->getConfig('write_options'));
         }
     }
 
@@ -427,7 +437,7 @@ class MongoSession
         $this->sessionDoc['last_accessed'] = new MongoDate();
         $this->sessionDoc['data'] = new MongoBinData($data, MongoBinData::BYTE_ARRAY);
 
-        $this->sessions->save($this->sessionDoc, array('safe' => true));
+        $this->sessions->save($this->sessionDoc, $this->getConfig('write_options'));
 
         return true;
     }
@@ -463,7 +473,7 @@ class MongoSession
      */
     public function destroy($sid)
     {
-        $this->sessions->remove(array('_id' => $sid), array('safe' => true));
+        $this->sessions->remove(array('_id' => $sid), $this->getConfig('write_options'));
 
         return true;
     }
@@ -480,9 +490,10 @@ class MongoSession
         //find all sessions that are older than $timeout
         $olderThan = time() - $timeout;
 
+	//no ack required
         $this->sessions->remove(
             array('last_accessed' => array('$lt' => new MongoDate($olderThan))),
-            array('safe' => false)
+            ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) )
         );
 
         return true;
