@@ -317,11 +317,15 @@ class MongoSession
                   if(preg_match('/duplicate key error/i', $e->getMessage())){
 		    //catch duplicate key when with <= 1.5.0
 		    continue;
-		  }else{
-		    //log exception and fail lock
-		    $this->log('exception: ' . $e->getMessage());
-		    break 1;
-		  }
+		  }elseif(preg_match('/replication timed out/i', $e->getMessage())){
+		    //replication error, to avoid partial write/lockout override write concern and unlock before error
+		    $this->instConfig['write_options'] = ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) );
+		    $this->lockAcquired = true;
+		    $this->unlock($sid);
+		  }  
+		  //log exception and fail lock
+		  $this->log('exception: ' . $e->getMessage());
+		  break 1;
                 }
 
                 $this->lockAcquired = true;
