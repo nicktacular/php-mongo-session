@@ -309,10 +309,19 @@ class MongoSession
                     $lock['mid'] = $mid;
 
                 try {
-		  $res = $this->locks->save($lock, $this->getConfig('write_options'));
+		  $res = $this->locks->insert($lock, $this->getConfig('write_options'));
+		} catch (MongoDuplicateKeyException $e){
+		  //duplicate key may occur during lock race
+		  continue;
                 } catch (MongoCursorException $e) {
-                    //may occur if there's a race to acquire a lock
-                    continue;
+                  if(preg_match('/duplicate key error/i', $e->getMessage())){
+		    //catch duplicate key when with <= 1.5.0
+		    continue;
+		  }else{
+		    //log exception and fail lock
+		    $this->log('exception: ' . $e->getMessage());
+		    break 1;
+		  }
                 }
 
                 $this->lockAcquired = true;
