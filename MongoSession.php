@@ -239,13 +239,15 @@ class MongoSession
      */
     public function dbInit()
     {
-        $this->sessions->ensureIndex(array(
-            'last_accessed' => 1
-        ));
-
-        $this->locks->ensureIndex(array(
-            'created' => 1
-        ));
+      $mongo_index = ( (phpversion('mongo') >= '1.5.0') ? ('createIndex') : ('ensureIndex') );
+      $this->log("maint: {$mongo_index} on ".$this->getConfig('collection')); 
+      $this->sessions->$mongo_index(array(
+					  'last_accessed' => 1
+					  ));
+      $this->log("maint: {$mongo_index} on ".$this->getConfig('lockcollection'));
+      $this->locks->$mongo_index(array(
+				       'created' => 1
+				       ));
     }
 
     /**
