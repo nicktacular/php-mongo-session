@@ -322,8 +322,8 @@ class MongoSession
 		  }elseif(preg_match('/replication timed out/i', $e->getMessage())){
 		    //replication error, to avoid partial write/lockout override write concern and unlock before error
 		    $this->instConfig['write_options'] = ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) );
-		    $this->lockAcquired = true;
-		    $this->unlock($sid);
+                    //force unlock to prevent lockout from partial write
+		    $this->unlock($sid, true);
 		  }  
 		  //log exception and fail lock
 		  $this->log('exception: ' . $e->getMessage());
@@ -354,9 +354,9 @@ class MongoSession
      * Release lock **only** if this instance had acquired it.
      * @param string $sid The session ID that php passes.
      */
-    private function unlock($sid)
+    private function unlock($sid, $force=false)
     {
-        if ($this->lockAcquired) {
+        if ($this->lockAcquired || $force) {
             $this->lockAcquired = false;
             $this->locks->remove(array('_id' => $sid), $this->getConfig('write_options'));
         }
