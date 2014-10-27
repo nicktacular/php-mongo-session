@@ -207,7 +207,7 @@ class MongoSession
           $this->instConfig['write_options'] = array('w'=>$this->getConfig('write_concern'), 'j'=>$this->getConfig('write_journal'));
         }else {
           //defunct 'safe' write, use safe mode if w > 0
-          $this->instConfig['write_options'] = array('safe'=>( ($this->getConfig('write_concern')>0) ? (true) : (false)));
+          $this->instConfig['write_options'] = array('safe'=>$this->getConfig('write_concern')>0);
         }
 
         //make the connection explicit
