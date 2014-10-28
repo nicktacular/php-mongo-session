@@ -152,11 +152,11 @@ class MongoSession
 
     /**
      * Need to call this method to start sessions.
-     * @param boolean $dbInit When passing true, it will also call ensureIndex()
-     *                                    on the appropriate collections so that Mongo isn't
-     *                                    slow. You should never pass true in a production app.
-     *                                    It should only be called once, perhaps by an install
-     *                                    script.
+     * @param  boolean $dbInit When passing true, it will also call ensureIndex()
+     *                         on the appropriate collections so that Mongo isn't
+     *                         slow. You should never pass true in a production app.
+     *                         It should only be called once, perhaps by an install
+     *                         script.
      * @return null
      */
     public static function init($dbInit = false)
@@ -191,7 +191,7 @@ class MongoSession
 
         //Mongo/MongoClient( uri, options )
         $mongo_options = array();
-        foreach($this->getConfig('connection_opts') as $optname=>$optvalue){
+        foreach ($this->getConfig('connection_opts') as $optname=>$optvalue) {
           $mongo_options[$optname] = $optvalue;
         }
 
@@ -202,10 +202,10 @@ class MongoSession
                                        $mongo_options
                                        );
 
-        if($mongo_class == 'MongoClient'){        
+        if ($mongo_class == 'MongoClient') {
           //set write concern from config
           $this->instConfig['write_options'] = array('w'=>$this->getConfig('write_concern'), 'j'=>$this->getConfig('write_journal'));
-        }else {
+        } else {
           //defunct 'safe' write, use safe mode if w > 0
           $this->instConfig['write_options'] = array('safe'=>$this->getConfig('write_concern')>0);
         }
@@ -240,7 +240,7 @@ class MongoSession
     public function dbInit()
     {
       $mongo_index = ( (phpversion('mongo') >= '1.5.0') ? ('createIndex') : ('ensureIndex') );
-      $this->log("maint: {$mongo_index} on ".$this->getConfig('collection')); 
+      $this->log("maint: {$mongo_index} on ".$this->getConfig('collection'));
       $this->sessions->$mongo_index(array(
                                           'last_accessed' => 1
                                           ));
@@ -312,19 +312,19 @@ class MongoSession
 
                 try {
                   $res = $this->locks->insert($lock, $this->getConfig('write_options'));
-                } catch (MongoDuplicateKeyException $e){
+                } catch (MongoDuplicateKeyException $e) {
                   //duplicate key may occur during lock race
                   continue;
                 } catch (MongoCursorException $e) {
-                  if(in_array($e->getCode(), array(11000,11001,12582))){
+                  if (in_array($e->getCode(), array(11000,11001,12582))) {
                     //catch duplicate key if no exception thrown
                     continue;
-                  }elseif(preg_match('/replication timed out/i', $e->getMessage())){
+                  } elseif (preg_match('/replication timed out/i', $e->getMessage())) {
                     //replication error, to avoid partial write/lockout override write concern and unlock before error
                     $this->instConfig['write_options'] = ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) );
                     //force unlock to prevent lockout from partial write
                     $this->unlock($sid, true);
-                  }  
+                  }
                   //log exception and fail lock
                   $this->log('exception: ' . $e->getMessage());
                   break 1;
@@ -400,8 +400,8 @@ class MongoSession
      *
      * @param  string $sid The session ID passed by PHP.
      * @return string Either an empty string if there's nothing in a session of a special session
-     *                                serialized string. In this case we're storing in the DB as MongoBinData since
-     *                                UTF-8 is harder to enforce than just storing as binary.
+     *                    serialized string. In this case we're storing in the DB as MongoBinData since
+     *                    UTF-8 is harder to enforce than just storing as binary.
      */
     public function read($sid)
     {
