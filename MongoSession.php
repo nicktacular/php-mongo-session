@@ -47,6 +47,7 @@ class MongoSession
     private static $config = array(
         'name'              => 'PHPSESSID',
         'connection'        => 'mongodb://localhost:27017',
+        'connection_opts'   => array(),//options to pass to MongoClient
         'db'                => 'mySessDb',
         'collection'        => 'sessions',
         'lockcollection'    => 'sessions_lock',
@@ -63,6 +64,8 @@ class MongoSession
         'error_handler'     => 'trigger_error',
         'logger'            => false,//by default, no logging
         'machine_id'        => false,//identify the machine, if you want for debugs
+        'write_concern'     => 1,//by default, MongoClient uses w=1 (Mongo 'safe' mode)
+        'write_journal'     => false,//by default, no journaling required before ack
     );
 
     /**
@@ -186,9 +189,26 @@ class MongoSession
         //we need to ensure that PHP knows about our explicit timeout
         ini_set('session.gc_maxlifetime', $this->getConfig('lifetime'));
 
-        $this->conn = new Mongo(
-            $this->getConfig('connection')
-        );
+        //Mongo/MongoClient( uri, options )
+        $mongo_options = array();
+        foreach($this->getConfig('connection_opts') as $optname=>$optvalue){
+          $mongo_options[$optname] = $optvalue;
+        }
+
+        //Mongo() defunct, use MongoClient() if available
+        $mongo_class = ( (class_exists('MongoClient')) ? ('MongoClient') : ('Mongo') );
+        $this->conn = new $mongo_class(
+                                       $this->getConfig('connection'),
+                                       $mongo_options
+                                       );
+
+        if($mongo_class == 'MongoClient'){        
+          //set write concern from config
+          $this->instConfig['write_options'] = array('w'=>$this->getConfig('write_concern'), 'j'=>$this->getConfig('write_journal'));
+        }else {
+          //defunct 'safe' write, use safe mode if w > 0
+          $this->instConfig['write_options'] = array('safe'=>$this->getConfig('write_concern')>0);
+        }
 
         //make the connection explicit
         $this->conn->connect();
@@ -219,13 +239,15 @@ class MongoSession
      */
     public function dbInit()
     {
-        $this->sessions->ensureIndex(array(
-            'last_accessed' => 1
-        ));
-
-        $this->locks->ensureIndex(array(
-            'created' => 1
-        ));
+      $mongo_index = ( (phpversion('mongo') >= '1.5.0') ? ('createIndex') : ('ensureIndex') );
+      $this->log("maint: {$mongo_index} on ".$this->getConfig('collection')); 
+      $this->sessions->$mongo_index(array(
+                                          'last_accessed' => 1
+                                          ));
+      $this->log("maint: {$mongo_index} on ".$this->getConfig('lockcollection'));
+      $this->locks->$mongo_index(array(
+                                       'created' => 1
+                                       ));
     }
 
     /**
@@ -289,10 +311,23 @@ class MongoSession
                     $lock['mid'] = $mid;
 
                 try {
-                    $res = $this->locks->save($lock, array('safe' => true));
+                  $res = $this->locks->insert($lock, $this->getConfig('write_options'));
+                } catch (MongoDuplicateKeyException $e){
+                  //duplicate key may occur during lock race
+                  continue;
                 } catch (MongoCursorException $e) {
-                    //may occur if there's a race to acquire a lock
+                  if(in_array($e->getCode(), array(11000,11001,12582))){
+                    //catch duplicate key if no exception thrown
                     continue;
+                  }elseif(preg_match('/replication timed out/i', $e->getMessage())){
+                    //replication error, to avoid partial write/lockout override write concern and unlock before error
+                    $this->instConfig['write_options'] = ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) );
+                    //force unlock to prevent lockout from partial write
+                    $this->unlock($sid, true);
+                  }  
+                  //log exception and fail lock
+                  $this->log('exception: ' . $e->getMessage());
+                  break 1;
                 }
 
                 $this->lockAcquired = true;
@@ -319,11 +354,11 @@ class MongoSession
      * Release lock **only** if this instance had acquired it.
      * @param string $sid The session ID that php passes.
      */
-    private function unlock($sid)
+    private function unlock($sid, $force=false)
     {
-        if ($this->lockAcquired) {
+        if ($this->lockAcquired || $force) {
             $this->lockAcquired = false;
-            $this->locks->remove(array('_id' => $sid), array('safe' => true));
+            $this->locks->remove(array('_id' => $sid), $this->getConfig('write_options'));
         }
     }
 
@@ -417,7 +452,7 @@ class MongoSession
         $this->sessionDoc['last_accessed'] = new MongoDate();
         $this->sessionDoc['data'] = new MongoBinData($data, MongoBinData::BYTE_ARRAY);
 
-        $this->sessions->save($this->sessionDoc, array('safe' => true));
+        $this->sessions->save($this->sessionDoc, $this->getConfig('write_options'));
 
         return true;
     }
@@ -453,7 +488,7 @@ class MongoSession
      */
     public function destroy($sid)
     {
-        $this->sessions->remove(array('_id' => $sid), array('safe' => true));
+        $this->sessions->remove(array('_id' => $sid), $this->getConfig('write_options'));
 
         return true;
     }
@@ -470,9 +505,10 @@ class MongoSession
         //find all sessions that are older than $timeout
         $olderThan = time() - $timeout;
 
+        //no ack required
         $this->sessions->remove(
             array('last_accessed' => array('$lt' => new MongoDate($olderThan))),
-            array('safe' => false)
+            ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) )
         );
 
         return true;

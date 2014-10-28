@@ -41,6 +41,21 @@ MongoSession::init();
 
 You can pass `true` to `init(…)` the first time it runs so that you create the indices, but that's it.
 
+You can pass options to MongoClient() via `connection_opts` in config.
+
+Ex, connect to replicaSet and define timeout:
+
+```php
+MongoSession::config(array(
+                           'connection'=>'mongodb://mongo1:27017,mongo2:27017',
+                           'connection_opts'=>array(
+                                                    'replicaSet'=>'rs1',
+                                                    'connecttimeoutMS'=>5000,
+                                                    ),
+                           'cookie_domain'=>'.mydomain.com',
+                           'db'=>'theDbName',
+```
+
 Sessions are hard
 =================
 
@@ -79,6 +94,20 @@ to ensure that you're running sufficient resources so that your application is r
 If you're going to try running session handling on a single MongoDB instance, you're most likely
 asking for trouble. Each application obviously has its own requirements and load so you need to
 analyze this. However, running a replica set with 3 or more machines is a good place to start.
+
+### Acknowledges
+
+By default this class will require acknowledged writes from the primary only. You can configure the 
+write concern as desired using the 'write_concern' configuration option. For example, set 'write_concern'
+to 2 to require acknowledgment from your primary and one secondary.
+
+You must not pass an integer 'write_concern' value as a string or it will be interpreted as a replica tag set.
+
+### Journaling
+
+By default this class does not require journaling before acknowleding the write. You can override this
+behavior and require writes are journaled before ack'd by setting the 'write_journal' boolean. When set
+to true, Mongo will flush the write to disk from memory before acknowledging the write.
 
 Why, oh why?
 ============
