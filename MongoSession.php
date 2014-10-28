@@ -316,7 +316,7 @@ class MongoSession
                   //duplicate key may occur during lock race
                   continue;
                 } catch (MongoCursorException $e) {
-                  if (in_array($e->getCode(), array(11000,11001,12582))) {
+                  if (in_array($e->getCode(), array(11001))) {
                     //catch duplicate key if no exception thrown
                     continue;
                   } elseif (preg_match('/replication timed out/i', $e->getMessage())) {
