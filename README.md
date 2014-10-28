@@ -127,8 +127,3 @@ session handler so I'm working on figuring out a test. Regardless, I'm using thi
 so I as find optimizations or bugs, I'll be sure to post these here in addition to the unit test I'm trying to
 wrap my head around.
 
-**(Q) Where's `composer.json`??**
-
-(A) Why don't you tweet about how this project doesn't have `composer.json`? I'll retweet you.
-
-
