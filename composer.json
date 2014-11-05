@@ -1,5 +1,31 @@
 {
+    "name": "nicktacular/php-mongo-session",
+    "type": "library",
+    "homepage": "http://github.com/nicktacular/php-mongo-session",
+    "time": "2014-11-31 19:00:00",
+    "license": "MIT",
+    "description": "PHP session handler for MongoDB.",
+    "authors": [
+        {
+            "name": "Nick Ilyin",
+            "email": "nick.ilyin@gmail.com",
+            "homepage": "http://github.com/nicktacular",
+            "role": "Developer"
+        }
+    ],
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/nicktacular/php-mongo-session"
+        }
+    ],
+    "require": {
+        "php": ">=5.2.17"
+    },
     "require-dev": {
         "phpunit/phpunit": ">=3.7.22"
+    },
+    "autoload": {
+        "files": ["MongoSession.php"]
     }
 }
