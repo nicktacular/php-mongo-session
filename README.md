@@ -47,13 +47,14 @@ Ex, connect to replicaSet and define timeout:
 
 ```php
 MongoSession::config(array(
-                           'connection'=>'mongodb://mongo1:27017,mongo2:27017',
-                           'connection_opts'=>array(
-                                                    'replicaSet'=>'rs1',
-                                                    'connecttimeoutMS'=>5000,
-                                                    ),
-                           'cookie_domain'=>'.mydomain.com',
-                           'db'=>'theDbName',
+    'connection'        => 'mongodb://mongo1:27017,mongo2:27017',
+    'connection_opts'   => array(
+        'replicaSet'        =>'rs1',
+        'connecttimeoutMS'  =>5000,
+    ),
+    'cookie_domain'     => '.mydomain.com',
+    'db'                => 'theDbName'
+);
 ```
 
 Sessions are hard
