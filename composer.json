@@ -2,7 +2,7 @@
     "name": "nicktacular/php-mongo-session",
     "type": "library",
     "homepage": "http://github.com/nicktacular/php-mongo-session",
-    "time": "2014-11-31 19:00:00",
+    "time": "2014-11-28 19:00:01",
     "license": "MIT",
     "description": "PHP session handler for MongoDB.",
     "authors": [
@@ -26,6 +26,9 @@
         "phpunit/phpunit": ">=3.7.22"
     },
     "autoload": {
-        "files": ["MongoSession.php"]
-    }
+        "files": [
+            "MongoSession.php"
+        ]
+    },
+    "version": "1.0.1"
 }
