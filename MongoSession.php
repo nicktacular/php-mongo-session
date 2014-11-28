@@ -57,6 +57,7 @@ class MongoSession
         'cookie_path'       => '/',
         'cookie_domain'     => '.thisdomain.com',
         'cookie_secure'     => false,
+        'cookie_httponly'   => false,
         'autostart'         => false,
         'locktimeout'       => 30,//seconds
         'locksleep'         => 100,//milliseconds
@@ -180,7 +181,7 @@ class MongoSession
 
         //set the cookie settings
         session_set_cookie_params(0, $this->getConfig('cookie_path'), $this->getConfig('cookie_domain'),
-            $this->getConfig('cookie_secure'));
+            $this->getConfig('cookie_secure'), $this->getConfig('cookie_httponly'));
 
         //set HTTP cache headers
         session_cache_limiter($this->getConfig('cache'));
