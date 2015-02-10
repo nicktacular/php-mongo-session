@@ -29,6 +29,9 @@ class MongoSession
 {
     /**
      * Using singleton pattern, so here's the instance.
+     *
+     * @deprecated
+     *
      * @var MongoSession
      */
     private static $instance;
@@ -44,10 +47,11 @@ class MongoSession
      * The 'cookie_domain' should just be set to $_SERVER['HTTP_HOST']
      * unless you have load balancing where a different host is being passed.
      */
-    private static $config = array(
+    protected static $defaultConfig = array(
         'name'              => 'PHPSESSID',
         'connection'        => 'mongodb://localhost:27017',
         'connection_opts'   => array(),//options to pass to MongoClient
+        'write_options'     => array(),
         'db'                => 'mySessDb',
         'collection'        => 'sessions',
         'lockcollection'    => 'sessions_lock',
@@ -70,15 +74,15 @@ class MongoSession
     );
 
     /**
-     * The instance configuration.
+     * The configuration.
      * @var array
      */
-    private $instConfig;
+    private $config;
 
 
     /**
      * MongoDB connection object.
-     * @var Mongo
+     * @var Mongo|MongoClient
      */
     private $conn;
 
@@ -127,16 +131,19 @@ class MongoSession
     /**
      * Set the configuration.
      * @var        $config        array
+     * @deprecated
      * @return null
      */
     public static function config(array $config = array())
     {
-        //configs
-        self::$config = array_merge(self::$config, $config);
+        self::$instance = self::create($config);
     }
 
     /**
      * Get the instance, or set up a new one.
+     *
+     * @deprecated
+     *
      * @return MongoSession
      */
     public static function instance()
@@ -146,18 +153,22 @@ class MongoSession
         }
 
         //set up a proper instance
-        self::$instance = new self;
+        self::$instance = self::create();
 
         return self::$instance;
     }
 
     /**
-     * Need to call this method to start sessions.
+     * This method is deprecated. Please use the create method instead.
+     *
      * @param  boolean $dbInit When passing true, it will also call ensureIndex()
      *                         on the appropriate collections so that Mongo isn't
      *                         slow. You should never pass true in a production app.
      *                         It should only be called once, perhaps by an install
      *                         script.
+     *
+     * @deprecated
+     *
      * @return null
      */
     public static function init($dbInit = false)
@@ -168,17 +179,48 @@ class MongoSession
             $i->dbInit();
         }
 
+        $i->setSaveHandler();
+
     }
 
     /**
-     * Private constructor to satisfy the singleton design pattern. You should
-     * be calling MongoSession::init() prior to starting sessions.
+     * Create a new instance of the MongoSession handler.
+     *
+     * @param array $configs Configuration.
+     *
+     * @return MongoSession
      */
-    private function __construct()
+    public static function create(array $configs = array())
     {
-        //set the configs
-        $this->setConfig(self::$config);
+        // set default configs wherever not present in $configs
+        foreach (self::$defaultConfig as $config => $value) {
+            if (!array_key_exists($config, $configs)) {
+                $configs[$config] = $value;
+            }
+        }
 
+        if (!isset($configs['mongo'])) {
+            $mongo = self::createMongoInstance($configs['connection'], $configs['connection_opts']);
+        } else {
+            $mongo = $configs['mongo'];
+        }
+
+        if (!count($configs['write_options'])) {
+            $configs['write_options'] = self::getWriteOptions(
+                $mongo,
+                $configs['write_concern'],
+                $configs['write_journal']
+            );
+        }
+
+        return new self($mongo, $configs);
+    }
+
+    /**
+     * Calls the necessary PHP methods to have this instance the session handler.
+     */
+    public function setSaveHandler()
+    {
         //set the cookie settings
         session_set_cookie_params(0, $this->getConfig('cookie_path'), $this->getConfig('cookie_domain'),
             $this->getConfig('cookie_secure'), $this->getConfig('cookie_httponly'));
@@ -190,40 +232,6 @@ class MongoSession
         //we need to ensure that PHP knows about our explicit timeout
         ini_set('session.gc_maxlifetime', $this->getConfig('lifetime'));
 
-        //Mongo/MongoClient( uri, options )
-        $mongo_options = array();
-        foreach ($this->getConfig('connection_opts') as $optname=>$optvalue) {
-          $mongo_options[$optname] = $optvalue;
-        }
-
-        //Mongo() defunct, use MongoClient() if available
-        $mongo_class = ( (class_exists('MongoClient')) ? ('MongoClient') : ('Mongo') );
-        $this->conn = new $mongo_class(
-                                       $this->getConfig('connection'),
-                                       $mongo_options
-                                       );
-
-        if ($mongo_class == 'MongoClient') {
-          //set write concern from config
-          $this->instConfig['write_options'] = array('w'=>$this->getConfig('write_concern'), 'j'=>$this->getConfig('write_journal'));
-        } else {
-          //defunct 'safe' write, use safe mode if w > 0
-          $this->instConfig['write_options'] = array('safe'=>$this->getConfig('write_concern')>0);
-        }
-
-        //make the connection explicit
-        $this->conn->connect();
-
-        //init some variables for use
-        $db = $this->getConfig('db');
-        $coll = $this->getConfig('collection');
-        $lock = $this->getConfig('lockcollection');
-
-        //connect to the db and collections
-        $this->db = $this->conn->$db;
-        $this->sessions = $this->db->$coll;
-        $this->locks = $this->db->$lock;
-
         //tell PHP to use this class as the handler
         session_set_save_handler(
             array($this, 'open'),
@@ -233,6 +241,76 @@ class MongoSession
             array($this, 'destroy'),
             array($this, 'gc')
         );
+    }
+
+    /**
+     * Creates a Mongo(Client) instance depending on which is available.
+     *
+     * @param $connStr string A connection string.
+     * @param array $config Configs for the constructor.
+     *
+     * @return Mongo|MongoClient The latest Mongo client class instance.
+     */
+    protected static function createMongoInstance($connStr, array $config)
+    {
+        $opts = array();
+        foreach ($config as $option => $value) {
+            $opts[$option] = $value;
+        }
+
+        if (class_exists('MongoClient')) {
+            $mongo = new MongoClient($connStr, $opts);
+        } else {
+            $mongo = new Mongo($connStr, $opts);
+        }
+
+        return $mongo;
+    }
+
+    /**
+     * Creates
+     *
+     * @param $connection Mongo|MongoClient The connection class.
+     * @param $writeConcern int Write concern.
+     * @param $writeJournal int Write journal.
+     *
+     * @return array The appropriate configuration for writes.
+     */
+    protected static function getWriteOptions($connection, $writeConcern, $writeJournal)
+    {
+        if ($connection instanceof MongoClient) {
+            return array(
+                'w' => $writeConcern,
+                'j' => $writeJournal
+            );
+        } else {
+            return array(
+                'safe' => $writeConcern > 0
+            );
+        }
+    }
+
+    /**
+     * @param $connection Mongo|MongoClient The client.
+     * @param array $config Configuration.
+     */
+    public function __construct($connection, array $config)
+    {
+        $this->conn = $connection;
+        $this->config = $config;
+
+        //make the connection explicit
+        $this->conn->connect();
+
+        //init some variables for use
+        $db = $this->getConfig('db');
+        $coll = $this->getConfig('collection');
+        $lock = $this->getConfig('lockcollection');
+
+        //connect to the db and select the collections
+        $this->db = $this->conn->selectDB($db);
+        $this->sessions = $this->db->selectCollection($coll);
+        $this->locks = $this->db->selectCollection($lock);
     }
 
     /**
@@ -252,25 +330,16 @@ class MongoSession
     }
 
     /**
-     * Set the configuration array for this instance.
-     * @param array $config The configuration array (see static::$config for format)
-     */
-    private function setConfig(array $config)
-    {
-        $this->instConfig = $config;
-    }
-
-    /**
      * Get a configuration item. Will return null if it doesn't exist.
      * @var $key    string        The key of the configuration you're looking.
      * @return mixed
      */
-    private function getConfig($key)
+    public function getConfig($key)
     {
-        if (!array_key_exists($key, $this->instConfig))
+        if (!array_key_exists($key, $this->config))
             return null;
         else
-            return $this->instConfig[$key];
+            return $this->config[$key];
     }
 
     /**
@@ -289,7 +358,16 @@ class MongoSession
     private function lock($sid)
     {
         //check if we've already acquired a lock
-        if ($this->lockAcquired) return true;
+        if ($this->lockAcquired) {
+            if ($sid == $this->sid) {
+                return true;
+            } else {
+                // during session regenerate, there will be a new id, so we need to unlock old
+                $this->unlock($this->sid, true);
+                $this->lockAcquired = false;
+                $this->sid = $sid;
+            }
+        }
 
         $timeout = $this->getConfig('locktimeout') * 1000000;//microseconds we want
         $sleep = $this->getConfig('locksleep') * 1000;//we want microseconds
@@ -322,7 +400,7 @@ class MongoSession
                     continue;
                   } elseif (preg_match('/replication timed out/i', $e->getMessage())) {
                     //replication error, to avoid partial write/lockout override write concern and unlock before error
-                    $this->instConfig['write_options'] = ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) );
+                    $this->config['write_options'] = ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) );
                     //force unlock to prevent lockout from partial write
                     $this->unlock($sid, true);
                   }
@@ -428,7 +506,7 @@ class MongoSession
      * @param  string  $data The session serialized data string.
      * @return boolean True always.
      */
-    public function write($sid, /*string*/ $data)
+    public function write($sid, $data)
     {
         //update/insert our session data
         if (!$this->sessionDoc) {
@@ -444,7 +522,7 @@ class MongoSession
 
             //set the new one
             $this->sid = $sid;
-            $this->lock($this->sid);//@TODO shouldn't we try to see if this succeeded first?
+            $this->lock($this->sid);
 
             //and also make sure we're going to write to the correct document
             $this->sessionDoc['_id'] = $sid;
@@ -490,6 +568,7 @@ class MongoSession
     public function destroy($sid)
     {
         $this->sessions->remove(array('_id' => $sid), $this->getConfig('write_options'));
+        $this->locks->remove(array('_id' => $sid), $this->getConfig('write_options'));
 
         return true;
     }

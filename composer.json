@@ -23,12 +23,13 @@
         "php": ">=5.2.17"
     },
     "require-dev": {
-        "phpunit/phpunit": ">=3.7.22"
+        "phpunit/phpunit": ">=3.7.22",
+        "mockery/mockery": "0.9.*",
+        "nicktacular/php-session-tester": "dev-master"
     },
     "autoload": {
         "files": [
             "MongoSession.php"
         ]
-    },
-    "version": "1.0.1"
+    }
 }

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<phpunit
+        bootstrap="test/bootstrap.php"
+        backupGlobals="false"
+        backupStaticAttributes="false"
+        cacheTokens="true"
+        colors="true"
+        convertErrorsToExceptions="true"
+        convertNoticesToExceptions="true"
+        convertWarningsToExceptions="true"
+        forceCoversAnnotation="false"
+        mapTestClassNameToCoveredClassName="false"
+        processIsolation="false"
+        stopOnError="false"
+        stopOnFailure="false"
+        stopOnIncomplete="false"
+        stopOnSkipped="false"
+        strict="true"
+        verbose="true"
+        beStrictAboutTestsThatDoNotTestAnything="true"
+        >
+
+    <php>
+        <env name="MONGO_CONN_STR" value="mongodb://localhost"/>
+        <env name="MONGO_CONN_DB_PREFIX" value="mongosession_test"/>
+    </php>
+
+    <testsuites>
+        <testsuite name="unit">
+            <directory suffix="Test.php">test/unit</directory>
+        </testsuite>
+        <testsuite name="functional">
+            <directory suffix="Test.php">test/functional</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
