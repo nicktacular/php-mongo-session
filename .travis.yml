@@ -14,6 +14,7 @@ branches:
     - testing
 
 before_script:
+  - echo "extension = mongo.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
   - sleep 5
   - mongo admin --eval 'db.addUser("a", "b");'
 
