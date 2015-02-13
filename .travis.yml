@@ -1,0 +1,27 @@
+services:
+  - mongodb
+
+language: php
+
+php:
+  - "5.3"
+  - "5.4"
+  - "5.5"
+  - "5.6"
+
+branches:
+  only:
+    - testing
+
+before_script:
+  - sleep 5
+  - mongo admin --eval 'db.addUser("phpmongosession", "phpmongosession");'
+
+script:
+  - phpunit --configuration phpunit.xml.dist --coverage-text
+
+notifications:
+  email: false
+
+install:
+  - composer install
