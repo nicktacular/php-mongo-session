@@ -16,7 +16,8 @@ branches:
 before_script:
   - echo "extension = mongo.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
   - sleep 5
-  - mongo admin --eval 'db.createUser({ user: "a", pwd: "b", roles: [ "root" ] });'
+  - |
+  mongo admin --eval 'db.createUser({ user: "a", pwd: "b", roles: [ "root" ] });'
 
 script:
   - MONGO_CONN_USER=a MONGO_CONN_PASS=b phpunit --configuration phpunit.xml.dist --coverage-text
