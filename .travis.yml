@@ -15,10 +15,10 @@ branches:
 
 before_script:
   - sleep 5
-  - mongo admin --eval 'db.addUser("phpmongosession", "phpmongosession");'
+  - mongo admin --eval 'db.addUser("a", "b");'
 
 script:
-  - phpunit --configuration phpunit.xml.dist --coverage-text
+  - MONGO_CONN_USER=a MONGO_CONN_PASS=b phpunit --configuration phpunit.xml.dist --coverage-text
 
 notifications:
   email: false

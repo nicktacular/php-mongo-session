@@ -7,6 +7,8 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 {
     protected static $missingRequirements = false;
     protected static $connectionTested = false;
+    protected static $connStr = '';
+    protected static $connOpts = array();
     protected static $dbPrefix;
     protected static $sessDocName = 'sessions';
     protected static $lockDocName = 'locks';
@@ -33,6 +35,20 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 
     protected $currDbName;
 
+    protected static function envOrConst($key)
+    {
+        $val = getenv($key);
+        if ($val) {
+            return $val;
+        }
+
+        if (defined($key)) {
+            return constant($key);
+        }
+
+        return null;
+    }
+
     public static function setupBeforeClass()
     {
         parent::setUpBeforeClass();
@@ -42,11 +58,13 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
             return;
         }
 
-        $conn = getenv('MONGO_CONN_STR');
-        $db = getenv('MONGO_CONN_DB_PREFIX');
+        self::$connStr = self::envOrConst('MONGO_CONN_STR');
+        $db =  self::envOrConst('MONGO_CONN_DB_PREFIX');
+        $username =  self::envOrConst('MONGO_CONN_USER');
+        $password =  self::envOrConst('MONGO_CONN_PASS');
         self::$dbPrefix = $db;
 
-        if (!$conn || !$db) {
+        if (!self::$connStr || !$db) {
             self::$missingRequirements = 'You need to set MONGO_CONN_STR and MONGO_CONN_DB_PREFIX in your phpunit.xml';
             return;
         }
@@ -55,15 +73,20 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 
         //try the mongo connection
         try {
+            if ($username && $password) {
+                self::$connOpts = array('username' => $username, 'password' => $password);
+            } else {
+                self::$connOpts = array();
+            }
             $class = class_exists('MongoClient') ? 'MongoClient' : 'Mongo';
             /** @var MongoClient $mongo */
-            $mongo = new $class($conn);
+            $mongo = new $class(self::$connStr, self::$connOpts);
             $mongo->connect();
             $mongo->selectDB($db);
             $mongo->dropDB($db);
             self::$connectionTested = true;
         } catch (Exception $e) {
-            self::$missingRequirements = sprintf('Mongo failed: %s/%s: %s', $conn, $db, $e->getMessage());
+            self::$missingRequirements = sprintf('Mongo failed: %s/%s: %s', self::$connStr, $db, $e->getMessage());
         }
 
     }
@@ -86,9 +109,9 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         $this->currDbName = sprintf('%s_%s', self::$dbPrefix, time());
 
         if (class_exists('MongoClient')) {
-            $this->currConn = new MongoClient(getenv('MONGO_CONN_STR'));
+            $this->currConn = new MongoClient(self::$connStr, self::$connOpts);
         } else {
-            $this->currConn = new Mongo(getenv('MONGO_CONN_STR'));
+            $this->currConn = new Mongo(self::$connStr, self::$connOpts);
         }
 
         $this->currConn->connect();
@@ -97,25 +120,6 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         $this->currLockDocs = $this->currDb->selectCollection(self::$lockDocName);
 
         parent::setUp();
-    }
-
-    /**
-     * @return Mongo|MongoClient
-     */
-    protected function getMongo()
-    {
-        if ($this->currConn) {
-            return $this->currConn;
-        }
-
-        if (class_exists('MongoClient')) {
-            $this->currConn = new MongoClient(getenv('MONGO_CONN_STR'));
-        } else {
-            $this->currConn = new Mongo(getenv('MONGO_CONN_STR'));
-        }
-
-        $this->currConn->connect();
-        return $this->currConn;
     }
 
     public function testNewSessionStartsWithDataWritten()
@@ -286,8 +290,13 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 
     public function tearDown()
     {
-        $this->currDb->drop();
-        $this->currConn->close();
+        if ($this->currDb) {
+            $this->currDb->drop();
+        }
+
+        if ($this->currConn) {
+            $this->currConn->close();
+        }
 
         parent::tearDown();
     }
