@@ -1,8 +1,5 @@
 <?php
 
-require_once '/Users/n1/proj/test-session/src/n1/Session/Emulator.php';
-require_once '/Users/n1/proj/test-session/src/n1/Session/HttpCookie.php';
-
 class SessionHandlingTest extends PHPUnit_Framework_TestCase
 {
     protected static $missingRequirements = false;
