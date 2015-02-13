@@ -1,7 +1,7 @@
 before_script: 
   - "echo \"extension = mongo.so\" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini"
   - "sleep 5"
-  - "mongo admin --eval 'db.addUser({ user: \"a\", pwd: \"b\", roles: [ \"readWrite\", \"dbAdmin\" ] });'"
+  - "mongo admin --eval 'db.addUser({ user: \"a\", pwd: \"b\", roles: [ \"root\" ] });'"
 branches: 
   only: 
     - testing
