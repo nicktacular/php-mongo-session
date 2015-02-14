@@ -6,7 +6,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
     protected static $connectionTested = false;
     protected static $connStr = '';
     protected static $connOpts = array();
-    protected static $dbPrefix;
+    protected static $db;
     protected static $sessDocName = 'sessions';
     protected static $lockDocName = 'locks';
 
@@ -56,17 +56,14 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         }
 
         self::$connStr = self::envOrConst('MONGO_CONN_STR');
-        $db =  self::envOrConst('MONGO_CONN_DB_PREFIX');
+        self::$db =  self::envOrConst('MONGO_CONN_DB');
         $username =  self::envOrConst('MONGO_CONN_USER');
         $password =  self::envOrConst('MONGO_CONN_PASS');
-        self::$dbPrefix = $db;
 
-        if (!self::$connStr || !$db) {
+        if (!self::$connStr || !self::$db) {
             self::$missingRequirements = 'You need to set MONGO_CONN_STR and MONGO_CONN_DB_PREFIX in your phpunit.xml';
             return;
         }
-
-        $db = sprintf('%s_%s', $db, time());
 
         //try the mongo connection
         try {
@@ -79,11 +76,11 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
             /** @var MongoClient $mongo */
             $mongo = new $class(self::$connStr, self::$connOpts);
             $mongo->connect();
-            $mongo->selectDB($db);
-            $mongo->dropDB($db);
+            $mongo->selectDB(self::$db);
+            $mongo->dropDB(self::$db);
             self::$connectionTested = true;
         } catch (Exception $e) {
-            self::$missingRequirements = sprintf('Mongo failed: %s/%s: %s', self::$connStr, $db, $e->getMessage());
+            self::$missingRequirements = sprintf('Mongo failed: %s/%s: %s', self::$connStr, self::$db, $e->getMessage());
         }
 
     }
@@ -103,7 +100,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
             $this->markTestSkipped("The Mongo connection was not tested.");
         }
 
-        $this->currDbName = sprintf('%s_%s', self::$dbPrefix, time());
+        $this->currDbName = self::$db;
 
         if (class_exists('MongoClient')) {
             $this->currConn = new MongoClient(self::$connStr, self::$connOpts);

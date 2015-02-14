@@ -22,7 +22,7 @@
 
     <php>
         <const name="MONGO_CONN_STR" value="mongodb://127.0.0.1/"/>
-        <const name="MONGO_CONN_DB_PREFIX" value="mongosession_test"/>
+        <const name="MONGO_CONN_DB" value="mongosession_test"/>
         <const name="MONGO_CONN_USER" value=""/>
         <const name="MONGO_CONN_PASS" value=""/>
     </php>
