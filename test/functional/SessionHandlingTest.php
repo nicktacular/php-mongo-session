@@ -77,7 +77,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
             $mongo = new $class(self::$connStr, self::$connOpts);
             $mongo->connect();
             $mongo->selectDB(self::$db);
-            $mongo->dropDB(self::$db);
+            //$mongo->dropDB(self::$db);
             self::$connectionTested = true;
         } catch (Exception $e) {
             self::$missingRequirements = sprintf('Mongo failed: %s/%s: %s', self::$connStr, self::$db, $e->getMessage());
@@ -285,7 +285,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
     public function tearDown()
     {
         if ($this->currDb) {
-            $this->currDb->drop();
+            //$this->currDb->drop();
         }
 
         if ($this->currConn) {
