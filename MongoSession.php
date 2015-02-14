@@ -81,7 +81,6 @@ class MongoSession
      */
     private $config;
 
-
     /**
      * MongoDB connection object.
      * @var Mongo|MongoClient
@@ -163,11 +162,11 @@ class MongoSession
     /**
      * This method is deprecated. Please use the create method instead.
      *
-     * @param  boolean $dbInit When passing true, it will also call ensureIndex()
-     *                         on the appropriate collections so that Mongo isn't
-     *                         slow. You should never pass true in a production app.
-     *                         It should only be called once, perhaps by an install
-     *                         script.
+     * @param boolean $dbInit When passing true, it will also call ensureIndex()
+     *                        on the appropriate collections so that Mongo isn't
+     *                        slow. You should never pass true in a production app.
+     *                        It should only be called once, perhaps by an install
+     *                        script.
      *
      * @deprecated
      *
@@ -182,7 +181,6 @@ class MongoSession
         }
 
         $i->setSaveHandler();
-
     }
 
     /**
@@ -283,11 +281,11 @@ class MongoSession
         if ($connection instanceof MongoClient) {
             return array(
                 'w' => $writeConcern,
-                'j' => $writeJournal
+                'j' => $writeJournal,
             );
         } else {
             return array(
-                'safe' => $writeConcern > 0
+                'safe' => $writeConcern > 0,
             );
         }
     }
@@ -302,12 +300,12 @@ class MongoSession
     {
         if ($this->conn instanceof MongoClient) {
             return array(
-                'w' => 0
+                'w' => 0,
             );
         }
 
         return array(
-            'safe' => false
+            'safe' => false,
         );
     }
 
@@ -339,14 +337,14 @@ class MongoSession
      */
     public function dbInit()
     {
-      $mongo_index = ( (phpversion('mongo') >= '1.5.0') ? ('createIndex') : ('ensureIndex') );
-      $this->log("maint: {$mongo_index} on ".$this->getConfig('collection'));
-      $this->sessions->$mongo_index(array(
-                                          'last_accessed' => 1
+        $mongo_index = ((phpversion('mongo') >= '1.5.0') ? ('createIndex') : ('ensureIndex'));
+        $this->log("maint: {$mongo_index} on ".$this->getConfig('collection'));
+        $this->sessions->$mongo_index(array(
+                                          'last_accessed' => 1,
                                           ));
-      $this->log("maint: {$mongo_index} on ".$this->getConfig('lockcollection'));
-      $this->locks->$mongo_index(array(
-                                       'created' => 1
+        $this->log("maint: {$mongo_index} on ".$this->getConfig('lockcollection'));
+        $this->locks->$mongo_index(array(
+                                       'created' => 1,
                                        ));
     }
 
@@ -357,10 +355,11 @@ class MongoSession
      */
     public function getConfig($key)
     {
-        if (!array_key_exists($key, $this->config))
-            return null;
-        else
+        if (!array_key_exists($key, $this->config)) {
+            return;
+        } else {
             return $this->config[$key];
+        }
     }
 
     /**
@@ -394,7 +393,7 @@ class MongoSession
         $sleep = $this->getConfig('locksleep') * 1000;//we want microseconds
         $start = microtime(true);
 
-        $this->log('Trying to acquire a lock on ' . $sid);
+        $this->log('Trying to acquire a lock on '.$sid);
 
         $waited = false;
 
@@ -407,33 +406,35 @@ class MongoSession
                 $lock['_id'] = $sid;
                 $lock['created'] = new MongoDate();
 
-                if ($mid = $this->getConfig('machine_id'))
+                if ($mid = $this->getConfig('machine_id')) {
                     $lock['mid'] = $mid;
+                }
 
                 try {
-                  $this->locks->insert($lock, $this->getConfig('write_options'));
+                    $this->locks->insert($lock, $this->getConfig('write_options'));
                 } catch (MongoDuplicateKeyException $e) {
-                  //duplicate key may occur during lock race
-                  continue;
-                } catch (MongoCursorException $e) {
-                  if (in_array($e->getCode(), self::$duplicateKeyCodes)) {
-                    //catch duplicate key if no exception thrown
+                    //duplicate key may occur during lock race
                     continue;
-                  } elseif (preg_match('/replication timed out/i', $e->getMessage())) {
-                    //force unlock to prevent lockout from partial write
-                    $this->unlock($sid, true);
-                  }
-                  //log exception and fail lock
-                  $this->log('exception: ' . $e->getMessage());
-                  break 1;
+                } catch (MongoCursorException $e) {
+                    if (in_array($e->getCode(), self::$duplicateKeyCodes)) {
+                        //catch duplicate key if no exception thrown
+                        continue;
+                    } elseif (preg_match('/replication timed out/i', $e->getMessage())) {
+                        //force unlock to prevent lockout from partial write
+                        $this->unlock($sid, true);
+                    }
+                    //log exception and fail lock
+                    $this->log('exception: '.$e->getMessage());
+                    break 1;
                 }
 
                 $this->lockAcquired = true;
 
-                $this->log('Lock acquired @ ' . date('Y-m-d H:i:s', $lock['created']->sec));
+                $this->log('Lock acquired @ '.date('Y-m-d H:i:s', $lock['created']->sec));
 
-                if ($waited)
-                    $this->log('LOCK_WAIT_SECONDS:' . number_format(microtime(true) - $start, 5));
+                if ($waited) {
+                    $this->log('LOCK_WAIT_SECONDS:'.number_format(microtime(true) - $start, 5));
+                }
 
                 return true;
             }
@@ -445,14 +446,14 @@ class MongoSession
         } while ($timeout > 0);
 
         //no lock could be acquired, so try to use an error handler for this
-        $this->errorHandler('Could not acquire lock for ' . $sid);
+        $this->errorHandler('Could not acquire lock for '.$sid);
     }
 
     /**
      * Release lock **only** if this instance had acquired it.
      * @param string $sid The session ID that php passes.
      */
-    private function unlock($sid, $force=false)
+    private function unlock($sid, $force = false)
     {
         if ($this->lockAcquired || $force) {
             $this->lockAcquired = false;
@@ -576,7 +577,10 @@ class MongoSession
     private function log($msg)
     {
         $logger = $this->getConfig('logger');
-        if (!$logger) return false;
+        if (!$logger) {
+            return false;
+        }
+
         return call_user_func_array($logger, array($msg));
     }
 
@@ -608,7 +612,7 @@ class MongoSession
         //no ack required
         $this->sessions->remove(
             array('last_accessed' => array(
-                '$lt' => new MongoDate($olderThan))
+                '$lt' => new MongoDate($olderThan), ),
             ),
             $this->getUnsafeWriteOptions()
         );

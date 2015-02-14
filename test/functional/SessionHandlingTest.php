@@ -43,7 +43,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
             return constant($key);
         }
 
-        return null;
+        return;
     }
 
     public static function setupBeforeClass()
@@ -52,6 +52,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 
         if (!extension_loaded('mongo')) {
             self::$missingRequirements = 'Mongo extension is not loaded';
+
             return;
         }
 
@@ -62,6 +63,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 
         if (!self::$connStr || !self::$db) {
             self::$missingRequirements = 'You need to set MONGO_CONN_STR and MONGO_CONN_DB_PREFIX in your phpunit.xml';
+
             return;
         }
 
@@ -82,7 +84,6 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         } catch (Exception $e) {
             self::$missingRequirements = sprintf('Mongo failed: %s/%s: %s', self::$connStr, self::$db, $e->getMessage());
         }
-
     }
 
     public function setup()
@@ -93,6 +94,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 
         if (self::$missingRequirements) {
             $this->markTestSkipped(self::$missingRequirements);
+
             return;
         }
 
@@ -103,9 +105,9 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         $this->currDbName = self::$db;
 
         if (class_exists('MongoClient')) {
-            $this->currConn = new MongoClient(self::$connStr . '/' . self::$db, self::$connOpts);
+            $this->currConn = new MongoClient(self::$connStr.'/'.self::$db, self::$connOpts);
         } else {
-            $this->currConn = new Mongo(self::$connStr . '/' . self::$db, self::$connOpts);
+            $this->currConn = new Mongo(self::$connStr.'/'.self::$db, self::$connOpts);
         }
 
         $this->currConn->connect();
@@ -121,7 +123,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         $handler = MongoSession::create(array(
             'db' => $this->currDbName,
             'collection' => self::$sessDocName,
-            'lockcollection' => self::$lockDocName
+            'lockcollection' => self::$lockDocName,
         ));
 
         $tester = new n1_Session_Emulator();
@@ -145,7 +147,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         $handler = MongoSession::create(array(
             'db' => $this->currDbName,
             'collection' => self::$sessDocName,
-            'lockcollection' => self::$lockDocName
+            'lockcollection' => self::$lockDocName,
         ));
 
         $tester = new n1_Session_Emulator();
@@ -173,9 +175,9 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
             'collection' => self::$sessDocName,
             'lockcollection' => self::$lockDocName,
             'locktimeout' => 0.1,
-            'error_handler' => function($msg){
+            'error_handler' => function ($msg) {
                 throw new Exception($msg);
-            }
+            },
         ));
 
         $id = 'abc123';
@@ -185,7 +187,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         //prior to session start we want to make a fake lock
         $this->currLockDocs->insert(array(
             '_id' => $id,
-            'created' => new MongoDate()
+            'created' => new MongoDate(),
         ));
 
         $tester->sessionStart();
@@ -196,7 +198,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         $handler = MongoSession::create(array(
             'db' => $this->currDbName,
             'collection' => self::$sessDocName,
-            'lockcollection' => self::$lockDocName
+            'lockcollection' => self::$lockDocName,
         ));
 
         $tester = new n1_Session_Emulator();
@@ -224,7 +226,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
             'db' => $this->currDbName,
             'collection' => self::$sessDocName,
             'lockcollection' => self::$lockDocName,
-            'timeout' => 0
+            'timeout' => 0,
         ));
 
         $tester = new n1_Session_Emulator();
@@ -248,6 +250,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 
         if (!$which) {
             $this->assertNull($doc, "There should NOT be a lock for $id");
+
             return;
         }
 

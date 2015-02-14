@@ -69,7 +69,7 @@ class FactoryTest extends PHPUnit_Framework_TestCase
             'cookie_path' => $cookiePath = '/horse/',
             'cookie_domain' => $cookieDomain = '.biz.co',
             'cookie_secure' => $cookieSecure = '1',
-            'cookie_httponly' => $cookieHttpOnly = '1'
+            'cookie_httponly' => $cookieHttpOnly = '1',
         ));
         $handler->setSaveHandler();
 
