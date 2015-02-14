@@ -3,7 +3,7 @@ php-mongo-session
 
 A PHP session handler with a Mongo DB backend.
 
- * Dev build: <a href="http://travis-ci.org/nicktacular/php-mongo-session"><img src="https://travis-ci.org/nicktacular/php-mongo-session.png?branch=testing"></a>
+ * Dev build: <a href="http://travis-ci.org/nicktacular/php-mongo-session"><img src="https://travis-ci.org/nicktacular/php-mongo-session.png?branch=develop"></a>
  * Stable build: <a href="http://travis-ci.org/nicktacular/php-mongo-session"><img src="https://travis-ci.org/nicktacular/php-mongo-session.png?branch=master"></a>
 
 Requirements

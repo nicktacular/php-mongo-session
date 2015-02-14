@@ -4,9 +4,6 @@ before_script:
   - "mongo mongosession_test --eval 'db.addUser({ user: \"a\", pwd: \"b\", roles: [ \"readWrite\", \"dbAdmin\" ] });'"
 after_script:
   - "mongo mongosession_test --eval 'db.dropDatabase()'"
-branches: 
-  only: 
-    - testing
 install: 
   - "composer install"
 language: php
