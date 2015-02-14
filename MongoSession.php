@@ -69,6 +69,13 @@ class MongoSession
     );
 
     /**
+     * Possible exception codes indicating MongoDB duplicate key error.
+     *
+     * @var array
+     */
+    protected static $duplicateKeyCodes = array(11001, 11000, 12582);
+
+    /**
      * The configuration.
      * @var array
      */
@@ -201,7 +208,7 @@ class MongoSession
         }
 
         if (!count($configs['write_options'])) {
-            $configs['write_options'] = self::getWriteOptions(
+            $configs['write_options'] = self::configWriteOptions(
                 $mongo,
                 $configs['write_concern'],
                 $configs['write_journal']
@@ -263,7 +270,7 @@ class MongoSession
     }
 
     /**
-     * Creates
+     * Configure write options depending on connection type.
      *
      * @param $connection Mongo|MongoClient The connection class.
      * @param $writeConcern int Write concern.
@@ -271,7 +278,7 @@ class MongoSession
      *
      * @return array The appropriate configuration for writes.
      */
-    protected static function getWriteOptions($connection, $writeConcern, $writeJournal)
+    protected static function configWriteOptions($connection, $writeConcern, $writeJournal)
     {
         if ($connection instanceof MongoClient) {
             return array(
@@ -283,6 +290,25 @@ class MongoSession
                 'safe' => $writeConcern > 0
             );
         }
+    }
+
+    /**
+     * Retrieve write options for operation which does not block on waiting for response
+     * from MongoDB.
+     *
+     * @return array Write options.
+     */
+    protected function getUnsafeWriteOptions()
+    {
+        if ($this->conn instanceof MongoClient) {
+            return array(
+                'w' => 0
+            );
+        }
+
+        return array(
+            'safe' => false
+        );
     }
 
     /**
@@ -385,17 +411,15 @@ class MongoSession
                     $lock['mid'] = $mid;
 
                 try {
-                  $res = $this->locks->insert($lock, $this->getConfig('write_options'));
+                  $this->locks->insert($lock, $this->getConfig('write_options'));
                 } catch (MongoDuplicateKeyException $e) {
                   //duplicate key may occur during lock race
                   continue;
                 } catch (MongoCursorException $e) {
-                  if (in_array($e->getCode(), array(11001, 11000, 12582))) {
+                  if (in_array($e->getCode(), self::$duplicateKeyCodes)) {
                     //catch duplicate key if no exception thrown
                     continue;
                   } elseif (preg_match('/replication timed out/i', $e->getMessage())) {
-                    //replication error, to avoid partial write/lockout override write concern and unlock before error
-                    $this->config['write_options'] = ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) );
                     //force unlock to prevent lockout from partial write
                     $this->unlock($sid, true);
                   }
@@ -432,7 +456,8 @@ class MongoSession
     {
         if ($this->lockAcquired || $force) {
             $this->lockAcquired = false;
-            $this->locks->remove(array('_id' => $sid), $this->getConfig('write_options'));
+            $opts = $force ? $this->getUnsafeWriteOptions() : $this->getConfig('write_options');
+            $this->locks->remove(array('_id' => $sid), $opts);
         }
     }
 
@@ -582,8 +607,10 @@ class MongoSession
 
         //no ack required
         $this->sessions->remove(
-            array('last_accessed' => array('$lt' => new MongoDate($olderThan))),
-            ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) )
+            array('last_accessed' => array(
+                '$lt' => new MongoDate($olderThan))
+            ),
+            $this->getUnsafeWriteOptions()
         );
 
         return true;

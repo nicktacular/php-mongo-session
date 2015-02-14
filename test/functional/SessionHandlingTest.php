@@ -284,9 +284,9 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 
     public function tearDown()
     {
-        if ($this->currDb) {
-            //$this->currDb->drop();
-        }
+        //clean up collections
+        $this->currLockDocs->remove();
+        $this->currSessDocs->remove();
 
         if ($this->currConn) {
             $this->currConn->close();
