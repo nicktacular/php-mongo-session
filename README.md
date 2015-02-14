@@ -3,8 +3,8 @@ php-mongo-session
 
 A PHP session handler with a Mongo DB backend.
 
- * Dev: <a href="http://travis-ci.org/nicktacular/php-mongo-session"><img src="https://travis-ci.org/nicktacular/php-mongo-session.png?branch=testing"></a>
- * Stable: <a href="http://travis-ci.org/nicktacular/php-mongo-session"><img src="https://travis-ci.org/nicktacular/php-mongo-session.png?branch=master"></a>
+ * Dev build: <a href="http://travis-ci.org/nicktacular/php-mongo-session"><img src="https://travis-ci.org/nicktacular/php-mongo-session.png?branch=testing"></a>
+ * Stable build: <a href="http://travis-ci.org/nicktacular/php-mongo-session"><img src="https://travis-ci.org/nicktacular/php-mongo-session.png?branch=master"></a>
 
 Requirements
 ============
@@ -20,13 +20,14 @@ Quickstart
 Pretty simple, actually. First, include `MongoSession` class like so:
 
 ```php
+// not necessary if installed with composer
 require_once 'MongoSession.php';
 ```
 
 Then you need to configure it. The most basic config looks like this:
 
 ```php
-MongoSession::config(array(
+$handler = MongoSession::create(array(
     'connection'    => 'mongodb://localhost:27017',
     'db'            => 'theDbName',
     'cookie_domain' => '.mydomain.com'
@@ -34,26 +35,24 @@ MongoSession::config(array(
 ```
 
 Replace `.mydomain.com` with your domain and change the connection string to any
-valid MongoDB connection string as [described here](http://www.php.net/manual/en/mongo.connecting.php).
+valid MongoDB connection string as described in [PHP manual](http://www.php.net/manual/en/mongo.connecting.php).
 
-Now, when you're ready, just call:
+Now, when you're ready, just call `setSaveHandler` to activate the session handling:
 
 ```php
-MongoSession::init();
+$handler->setSaveHandler();
 ```
-
-You can pass `true` to `init(…)` the first time it runs so that you create the indices, but that's it.
 
 You can pass options to MongoClient() via `connection_opts` in config.
 
-Ex, connect to replicaSet and define timeout:
+For example, connect to a replicaSet `rs1` with a defined timeout:
 
 ```php
-MongoSession::config(array(
+$handler = MongoSession::create(array(
     'connection'        => 'mongodb://mongo1:27017,mongo2:27017',
     'connection_opts'   => array(
-        'replicaSet'        =>'rs1',
-        'connecttimeoutMS'  =>5000,
+        'replicaSet'        => 'rs1',
+        'connecttimeoutMS'  => 5000,
     ),
     'cookie_domain'     => '.mydomain.com',
     'db'                => 'theDbName'
@@ -112,22 +111,3 @@ You must not pass an integer 'write_concern' value as a string or it will be int
 By default this class does not require journaling before acknowleding the write. You can override this
 behavior and require writes are journaled before ack'd by setting the 'write_journal' boolean. When set
 to true, Mongo will flush the write to disk from memory before acknowledging the write.
-
-Why, oh why?
-============
-
-If you've examined the code, I'm sure you have a few questions.
-
-**(Q) Why is this PHP 5.2 compatible? Nothing cool in PHP ever existed prior to 5.3**
-
-(A) You're preaching to the choir, but it's a legacy app thing. I'll make it 5.4 flavored eventually.
-
-**(Q) WHERE are your unit tests?**
-
-(This is a question [@grmpyprogrammer](https://twitter.com/grmpyprogrammer) is surely asking right about now…)
-
-(A) I'm working on it, but PHP sessions are inherently difficult to test. You can't really mock PHP calling your
-session handler so I'm working on figuring out a test. Regardless, I'm using this in a production environment
-so I as find optimizations or bugs, I'll be sure to post these here in addition to the unit test I'm trying to
-wrap my head around.
-

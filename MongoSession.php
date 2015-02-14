@@ -1,8 +1,7 @@
 <?php
 /**
  * @author            Nick Ilyin nick.ilyin@gmail.com
- * @version            v0.1
- * @description        Changes PHP's behaviour with sessions by using Mongo as a data
+ * @description       Changes PHPs behaviour with sessions by using Mongo as a data
  *                    storage solution for PHP sessions. Safely does things by locking
  *                    sessions while using them. Currently requires 1 database in mongo
  *                    and 2 collections. Please use collections that don't already exist
@@ -11,15 +10,11 @@
  *
  * @example            In your bootstrap file/class/method, configure mongo like:
  *                    <code>
- *                    MongoSession::config(array(
+ *                    $handler = MongoSession::create(array(
  *                        'connection' => 'mongodb://localhost:27017',
  *                        'cookie_domain' => $_SERVER['HOST_NAME']
  *                    ));
- *                    </code>
- *
- *                    Then call the init:
- *                    <code>
- *                    MongoSession::init();
+ *                    $handler->setSaveHandler();
  *                    </code>
  *
  *                    Then you can do beautiful things like session_start() or $_SESSION['coolest'] = 'MongoSession!';
