@@ -43,29 +43,30 @@ class MongoSession
      * unless you have load balancing where a different host is being passed.
      */
     protected static $defaultConfig = array(
-        'name'              => 'PHPSESSID',
-        'connection'        => 'mongodb://localhost:27017',
-        'connection_opts'   => array(),//options to pass to MongoClient
-        'write_options'     => array(),
-        'db'                => 'mySessDb',
-        'collection'        => 'sessions',
-        'lockcollection'    => 'sessions_lock',
-        'timeout'           => 3600,//seconds
-        'cache'             => 'nocache',
-        'cache_expiry'      => 180,//minutes
-        'cookie_path'       => '/',
-        'cookie_domain'     => '.thisdomain.com',
-        'cookie_secure'     => false,
-        'cookie_httponly'   => false,
-        'autostart'         => false,
-        'locktimeout'       => 30,//seconds
-        'locksleep'         => 100,//milliseconds
-        'cleanonclose'      => false,//this is an option for testing purposes
-        'error_handler'     => 'trigger_error',
-        'logger'            => false,//by default, no logging
-        'machine_id'        => false,//identify the machine, if you want for debugs
-        'write_concern'     => 1,//by default, MongoClient uses w=1 (Mongo 'safe' mode)
-        'write_journal'     => false,//by default, no journaling required before ack
+        'name'                  => 'PHPSESSID',
+        'connection'            => 'mongodb://localhost:27017',
+        'connection_opts'       => array(),//options to pass to MongoClient
+        'write_options'         => array(),
+        'db'                    => 'mySessDb',
+        'collection'            => 'sessions',
+        'lockcollection'        => 'sessions_lock',
+        'timeout'               => 3600,//seconds
+        'cache'                 => 'nocache',
+        'cache_expiry'          => 180,//minutes
+        'cookie_path'           => '/',
+        'cookie_domain'         => '.thisdomain.com',
+        'cookie_secure'         => false,
+        'cookie_httponly'       => false,
+        'autostart'             => false,
+        'locktimeout'           => 30,//seconds
+        'locksleep'             => 100,//milliseconds
+        'cleanonclose'          => false,//this is an option for testing purposes
+        'error_handler'         => 'trigger_error',
+        'logger'                => false,//by default, no logging
+        'machine_id'            => false,//identify the machine, if you want for debugs
+        'write_concern'         => 1,//by default, MongoClient uses w=1 (Mongo 'safe' mode)
+        'write_journal'         => false,//by default, no journaling required before ack
+        'lock_timeout_cleanup'  => 60,//seconds
     );
 
     /**
@@ -605,16 +606,28 @@ class MongoSession
     public function gc($lifetime = 0)
     {
         $timeout = $this->getConfig('timeout');
+        $lockTimeout = $this->getConfig('lock_timeout_cleanup');
 
-        //find all sessions that are older than $timeout
+        //find all sessions and locks that are older than the timeout
         $olderThan = time() - $timeout;
+        $locksOlderThan = time() - $lockTimeout;
+        $opts = $this->getUnsafeWriteOptions();
 
-        //no ack required
         $this->sessions->remove(
-            array('last_accessed' => array(
-                '$lt' => new MongoDate($olderThan), ),
+            array(
+                'last_accessed' => array(
+                    '$lt' => new MongoDate($olderThan),
+                ),
             ),
-            $this->getUnsafeWriteOptions()
+            $opts
+        );
+        $this->locks->remove(
+            array(
+                'created' => array(
+                    '$lt' => new MongoDate($locksOlderThan)
+                ),
+            ),
+            $opts
         );
 
         return true;

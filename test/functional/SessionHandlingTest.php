@@ -213,7 +213,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         $newId = $tester->sessionId();
         $tester->sessionWriteClose();
 
-        $this->assertLockAcquired($id, false);//uh oh there IS still a lock here wtf
+        $this->assertLockAcquired($id, false);
         $this->assertHasData($newId, $tester->serialize());
         $this->assertNoData($id);
 
@@ -242,6 +242,31 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         $handler->gc();
 
         $this->assertNoData($id);
+    }
+
+    public function testGarbageCollectionRemovesStaleSessionLocks()
+    {
+        $handler = MongoSession::create(array(
+            'db' => $this->currDbName,
+            'collection' => self::$sessDocName,
+            'lockcollection' => self::$lockDocName,
+            'timeout' => 0,
+            'lock_timeout_cleanup' => 0
+        ));
+
+        $tester = new n1_Session_Emulator();
+        $tester->setSaveHandler($handler);
+        $tester->sessionStart();
+        $id = $tester->sessionId();
+
+        $tester->set('a', 1);
+
+        sleep(1);//otherwise gc won't kick in
+
+        $handler->gc();
+
+        $this->assertNoData($id);
+        $this->assertLockAcquired($id, false);
     }
 
     public function assertLockAcquired($id, $which = true)
