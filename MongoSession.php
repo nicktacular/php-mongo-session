@@ -51,8 +51,8 @@ class MongoSession
         'collection'        => 'sessions',
         'lockcollection'    => 'sessions_lock',
         'timeout'           => 3600,//seconds
-        'cache'             => 'private_no_expire',
-        'cache_expiry'      => 10,//minutes
+        'cache'             => 'nocache',
+        'cache_expiry'      => 180,//minutes
         'cookie_path'       => '/',
         'cookie_domain'     => '.thisdomain.com',
         'cookie_secure'     => false,
