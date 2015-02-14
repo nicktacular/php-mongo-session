@@ -2,7 +2,6 @@
     "name": "nicktacular/php-mongo-session",
     "type": "library",
     "homepage": "http://github.com/nicktacular/php-mongo-session",
-    "time": "2014-11-28 19:00:01",
     "license": "MIT",
     "description": "PHP session handler for MongoDB.",
     "authors": [
