@@ -9,6 +9,8 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
     protected static $db;
     protected static $sessDocName = 'sessions';
     protected static $lockDocName = 'locks';
+    protected static $username;
+    protected static $password;
 
     /**
      * @var MongoCollection
@@ -57,8 +59,8 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 
         self::$connStr = self::envOrConst('MONGO_CONN_STR');
         self::$db =  self::envOrConst('MONGO_CONN_DB');
-        $username =  self::envOrConst('MONGO_CONN_USER');
-        $password =  self::envOrConst('MONGO_CONN_PASS');
+        self::$username =  self::envOrConst('MONGO_CONN_USER');
+        self::$password =  self::envOrConst('MONGO_CONN_PASS');
 
         if (!self::$connStr || !self::$db) {
             self::$missingRequirements = 'You need to set MONGO_CONN_STR and MONGO_CONN_DB_PREFIX in your phpunit.xml';
@@ -67,16 +69,14 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 
         //try the mongo connection
         try {
-            if ($username && $password) {
-                self::$connOpts = array('username' => $username, 'password' => $password);
-            } else {
-                self::$connOpts = array();
-            }
             $class = class_exists('MongoClient') ? 'MongoClient' : 'Mongo';
             /** @var MongoClient $mongo */
-            $mongo = new $class(self::$connStr . '/' . self::$db, self::$connOpts);
+            $mongo = new $class(self::$connStr, self::$connOpts);
             $mongo->connect();
-            $mongo->selectDB(self::$db);
+            $db = $mongo->selectDB(self::$db);
+            if (self::$username && self::$password) {
+                $db->authenticate(self::$username, self::$password);
+            }
             $mongo->dropDB(self::$db);
             self::$connectionTested = true;
         } catch (Exception $e) {
@@ -110,6 +110,9 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
 
         $this->currConn->connect();
         $this->currDb = $this->currConn->selectDB($this->currDbName);
+        if (self::$username && self::$password) {
+            $this->currDb->authenticate(self::$username, self::$password);
+        }
         $this->currSessDocs = $this->currDb->selectCollection(self::$sessDocName);
         $this->currLockDocs = $this->currDb->selectCollection(self::$lockDocName);
 
