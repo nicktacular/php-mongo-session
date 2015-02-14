@@ -74,7 +74,7 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
             }
             $class = class_exists('MongoClient') ? 'MongoClient' : 'Mongo';
             /** @var MongoClient $mongo */
-            $mongo = new $class(self::$connStr, self::$connOpts);
+            $mongo = new $class(self::$connStr . '/' . self::$db, self::$connOpts);
             $mongo->connect();
             $mongo->selectDB(self::$db);
             $mongo->dropDB(self::$db);
@@ -103,9 +103,9 @@ class SessionHandlingTest extends PHPUnit_Framework_TestCase
         $this->currDbName = self::$db;
 
         if (class_exists('MongoClient')) {
-            $this->currConn = new MongoClient(self::$connStr, self::$connOpts);
+            $this->currConn = new MongoClient(self::$connStr . '/' . self::$db, self::$connOpts);
         } else {
-            $this->currConn = new Mongo(self::$connStr, self::$connOpts);
+            $this->currConn = new Mongo(self::$connStr . '/' . self::$db, self::$connOpts);
         }
 
         $this->currConn->connect();
