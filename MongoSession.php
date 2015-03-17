@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @author            Nick Ilyin nick.ilyin@gmail.com
  * @version            v0.1
@@ -180,7 +181,7 @@ class MongoSession
         $this->setConfig(self::$config);
 
         //set the cookie settings
-        session_set_cookie_params(0, $this->getConfig('cookie_path'), $this->getConfig('cookie_domain'),
+        session_set_cookie_params($this->getConfig('timeout'), $this->getConfig('cookie_path'), $this->getConfig('cookie_domain'),
             $this->getConfig('cookie_secure'), $this->getConfig('cookie_httponly'));
 
         //set HTTP cache headers
@@ -188,7 +189,7 @@ class MongoSession
         session_cache_expire($this->getConfig('cache_expiry'));
 
         //we need to ensure that PHP knows about our explicit timeout
-        ini_set('session.gc_maxlifetime', $this->getConfig('lifetime'));
+        ini_set('session.gc_maxlifetime', $this->getConfig('timeout'));
 
         //Mongo/MongoClient( uri, options )
         $mongo_options = array();
