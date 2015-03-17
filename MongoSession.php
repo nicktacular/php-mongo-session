@@ -198,13 +198,13 @@ class MongoSession
         }
 
         //Mongo() defunct, use MongoClient() if available
-        $mongo_class = ( (class_exists('\MongoClient')) ? ('\MongoClient') : ('\Mongo') );
+        $mongo_class = ( (class_exists('MongoClient')) ? ('MongoClient') : ('Mongo') );
         $this->conn = new $mongo_class(
                                        $this->getConfig('connection'),
                                        $mongo_options
                                        );
 
-        if ($mongo_class == '\MongoClient') {
+        if ($mongo_class == 'MongoClient') {
           //set write concern from config
           $this->instConfig['write_options'] = array('w'=>$this->getConfig('write_concern'), 'j'=>$this->getConfig('write_journal'));
         } else {
@@ -323,7 +323,7 @@ class MongoSession
                     continue;
                   } elseif (preg_match('/replication timed out/i', $e->getMessage())) {
                     //replication error, to avoid partial write/lockout override write concern and unlock before error
-                    $this->instConfig['write_options'] = ( (class_exists('\MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) );
+                    $this->instConfig['write_options'] = ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) );
                     //force unlock to prevent lockout from partial write
                     $this->unlock($sid, true);
                   }
@@ -510,7 +510,7 @@ class MongoSession
         //no ack required
         $this->sessions->remove(
             array('last_accessed' => array('$lt' => new MongoDate($olderThan))),
-            ( (class_exists('\MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) )
+            ( (class_exists('MongoClient')) ? (array('w'=>0)) : (array('safe'=>false)) )
         );
 
         return true;
